@@ -14,6 +14,7 @@ public class GuardTime {
     public final List<TimeDuration> sleepTimes = new ArrayList();
 
     public int timeAsleep = 0;
+    public int mostOftenMinAsleep = 0;
 
     public GuardTime(int id) {
         this.id = id;
@@ -77,7 +78,7 @@ public class GuardTime {
                     System.out.println("\t\t-Sleep end " + timeEntry.hour + ":" + timeEntry.min);
 
                     //Build duration object
-                    TimeDuration duration = new TimeDuration(sleepStart.hour, sleepStart.min, timeEntry.hour, timeEntry.min);
+                    TimeDuration duration = new TimeDuration(sleepStart.hour, sleepStart.min, timeEntry.hour, timeEntry.min - 1);
 
                     //Track duration
                     sleepTimes.add(duration);
@@ -121,6 +122,31 @@ public class GuardTime {
                 System.exit(-1);
             }
         }
+
+        System.out.println("\tFinding most often min asleep:");
+        int highestMinCount = 0;
+        int highestMin = -1;
+        for(int min = firstStartMin; min < lastEndMin; min++)
+        {
+            System.out.println("\t\tmin: " + min);
+            int count = 0;
+            for(TimeDuration duration : sleepTimes)
+            {
+                if(duration.isInside(firstStartHour, min))
+                {
+                    System.out.println("\t\t\t" + duration);
+                    count++;
+                }
+            }
+            if(count > highestMinCount)
+            {
+                highestMinCount = count;
+                highestMin = min;
+            }
+        }
+
+        mostOftenMinAsleep = highestMin;
+        System.out.println("\tMost Overlap Min: " + mostOftenMinAsleep);
 
         //Output total sleep
         System.out.println("\tTotal: " + timeAsleep);

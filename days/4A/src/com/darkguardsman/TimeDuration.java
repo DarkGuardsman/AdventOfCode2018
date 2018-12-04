@@ -53,4 +53,20 @@ public class TimeDuration {
     public String toString() {
         return "TimeDuration[" + startHour + ":" + startMin + " to " + endHour + ":" + endMin + " for " + getDifferenceMins() + "]";
     }
+
+    public boolean isInside(int hour, int min) {
+        if(hour >= startHour && hour <= endHour)
+        {
+            if(hour == startHour)
+            {
+                return min >= startMin && min <= endMin;
+            }
+            else if(hour == endHour)
+            {
+                return min <= endMin;
+            }
+            return true; //If its between hours no need to check mins
+        }
+        return false;
+    }
 }

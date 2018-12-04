@@ -82,11 +82,9 @@ public class Main {
             }
         }
 
-        System.out.println("Guard asleep longest: " + guardTime + " with a time of " + guardTime.timeAsleep);
-        for(TimeDuration duration : guardTime.sleepTimes)
-        {
-            System.out.println(duration);
-        }
+        System.out.println("Guard asleep longest: " + guardTime + " with a time of " + guardTime.timeAsleep + " most often asleep at min " + guardTime.mostOftenMinAsleep);
+
+        System.out.println("Answer: " + (guardTime.id * guardTime.mostOftenMinAsleep));
 
     }
 }

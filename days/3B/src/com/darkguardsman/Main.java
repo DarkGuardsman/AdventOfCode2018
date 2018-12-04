@@ -1,9 +1,12 @@
 package com.darkguardsman;
 
+import com.darkguardsman.helpers.FileHelpers;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.logging.FileHandler;
 
 /**
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
@@ -22,18 +25,8 @@ public class Main {
 
         //Read file
         System.out.println("\nReading File: ");
-        List<String> lines = new ArrayList();
-
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                lines.add(line.trim());
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            System.exit(-1);
-        } catch (IOException e) {
-            e.printStackTrace();
+        List<String> lines = FileHelpers.getLines(file);
+        if (lines == null) {
             System.exit(-1);
         }
 
@@ -56,10 +49,8 @@ public class Main {
         System.out.println("\nProcessing: ");
         List<Claim> filterResults = new ArrayList();
 
-        for(Claim claim : claims)
-        {
-            if(!claim.overlaps)
-            {
+        for (Claim claim : claims) {
+            if (!claim.overlaps) {
                 filterResults.add(claim);
             }
         }

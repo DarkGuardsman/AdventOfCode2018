@@ -26,4 +26,21 @@ public class FileHelpers {
         }
         return lines;
     }
+
+    public static String getAsString(File file) {
+        StringBuilder builder = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                builder.append(line);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return builder.toString().trim();
+    }
 }

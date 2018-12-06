@@ -4,9 +4,17 @@ import com.darkguardsman.helpers.Direction2D;
 import com.darkguardsman.helpers.Dot;
 import com.darkguardsman.helpers.FileHelpers;
 
+import javax.imageio.ImageIO;
 import javax.sql.DataSource;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
+import java.awt.image.AffineTransformOp;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
 
@@ -56,7 +64,7 @@ public class Main {
         final int minY = dotSources.stream().min(Comparator.comparingInt(dot -> dot.y)).get().y;
         final int maxY = dotSources.stream().max(Comparator.comparingInt(dot -> dot.y)).get().y;
 
-        final GridDataMap gridDataMap = GridDataMap.newMinMaxMap(minX, minY, maxX, maxY, 100);
+        final GridDataMap gridDataMap = GridDataMap.newMinMaxMap(minX, minY, maxX, maxY, 0);
         System.out.println("\t" + gridDataMap);
 
         //Map data sources to ID for lookup
@@ -114,7 +122,8 @@ public class Main {
 
             return true;
         });
-        generateGridView(file, gridDataMap);
+        generateGridView(new File(file.getParent(), "grid_output.csv"), gridDataMap);
+        generateGridImage(new File(file.getParent(), "grid_image.png"), gridDataMap, 4);
 
         //Convert map data into blobs
         // Decided this would take too much time, instead using a simple loop
@@ -156,8 +165,58 @@ public class Main {
         System.out.println("\nLargest size: " + largestSize);
     }
 
+    static void generateGridImage(File file, GridDataMap gridDataMap, int scale) {
+        Random rand = new Random();
+        HashMap<Integer, Color> idToColor = new HashMap();
+        BufferedImage rawImage = new BufferedImage(gridDataMap.sizeX, gridDataMap.sizeY, BufferedImage.TYPE_INT_ARGB);
+        for (int x = 0; x < gridDataMap.sizeX; x++) {
+            for (int y = 0; y < gridDataMap.sizeY; y++) {
+                GridDataPoint data = gridDataMap.data[gridDataMap.getIndexInternal(x, y)];
+                if (data != null) {
+
+                    //Create random color
+                    if (!idToColor.containsKey(data.owner)) {
+                        float r = rand.nextFloat();
+                        float g = rand.nextFloat();
+                        float b = rand.nextFloat();
+                        idToColor.put(data.owner, new Color(r, g, b));
+                    }
+
+                    //Set pixel to color
+                    rawImage.setRGB(x, y, idToColor.get(data.owner).getRGB());
+                } else {
+                    //Set pixel to color
+                    rawImage.setRGB(x, y, Color.magenta.getRGB());
+                }
+            }
+        }
+
+
+        try {
+            ImageIO.write(rawImage, "png", file);
+        } catch (IOException e) {
+            System.out.println(e);
+        }
+
+        //Scale image
+        if (scale > 1) {
+            BufferedImage scaledImage = new BufferedImage(rawImage.getWidth() * scale, rawImage.getHeight() * scale, BufferedImage.TYPE_INT_ARGB);
+            AffineTransform at = new AffineTransform();
+            at.scale(scale, scale);
+            AffineTransformOp scaleOp =
+                    new AffineTransformOp(at, AffineTransformOp.TYPE_NEAREST_NEIGHBOR);
+            scaledImage = scaleOp.filter(rawImage, scaledImage);
+
+            try {
+                ImageIO.write(scaledImage, "png", new File(file.getParent(), file.getName().replace(".png", "") + "_scaled.png"));
+            } catch (IOException e) {
+                System.out.println(e);
+            }
+        }
+    }
+
     static void generateGridView(File file, GridDataMap gridDataMap) {
-        try (PrintWriter pw = new PrintWriter(new File(file.getParent(), "grid_output.csv"))) {
+        try (PrintWriter pw = new PrintWriter(file)) {
 
             StringBuilder sb = new StringBuilder();
 

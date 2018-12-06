@@ -8,7 +8,7 @@ package com.darkguardsman;
 public interface GridXYFunction {
 
     /**
-     * Callback function for use in {@link GridDataMap#forEachCell(GridXYFunction)}
+     * Callback function for use in {@link GridDataMap#forEachPosition(GridXYFunction)}
      *
      * @param x     - world position
      * @param y     - world position

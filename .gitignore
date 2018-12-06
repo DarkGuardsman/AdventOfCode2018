@@ -33,3 +33,7 @@ hs_err_pid*
 .project
 
 days/6A/run/grid_output\.csv
+
+days/6A/run/grid_image\.png
+
+*.png

@@ -13,7 +13,7 @@ public class GridDataMap {
     public final int sizeY;
 
     //Data in the map
-    private GridDataPoint[] data;
+    public final GridDataPoint[] data;
 
 
     public static GridDataMap newMinMaxMap(int minX, int minY, int maxX, int maxY, int padding) {
@@ -49,7 +49,12 @@ public class GridDataMap {
         int yy = y - this.y;
 
         //index = column start (column index * columns) + row
-        return yy * sizeY + xx;
+        return getIndexInternal(xx, yy);
+    }
+
+    public int getIndexInternal(int x, int y)
+    {
+        return y * sizeY + x;
     }
 
     /**
@@ -116,10 +121,7 @@ public class GridDataMap {
     public boolean forEachCell(GridCellFunction function) {
         for (int y = this.y; y < (this.y + this.sizeY); y++) {
             for (int x = this.x; x < (this.x + this.sizeX); x++) {
-                boolean isEdge = y == this.y
-                        || y == ((this.y + this.sizeY) - 1)
-                        || x == this.x
-                        || x == ((this.x + this.sizeX) - 1);
+                boolean isEdge = isOnEdge(x, y);
 
                 if (!function.accept(x, y, getData(x, y), isEdge)) {
                     return false;
@@ -127,6 +129,14 @@ public class GridDataMap {
             }
         }
         return true;
+    }
+
+    public boolean isOnEdge(int x, int y)
+    {
+        return !insideMap(x + 1, y)
+                || !insideMap(x - 1, y)
+                || !insideMap(x, y + 1)
+                || !insideMap(x, y - 1);
     }
 
     public boolean forEachPosition(GridXYFunction function) {

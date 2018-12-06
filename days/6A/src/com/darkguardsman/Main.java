@@ -47,6 +47,7 @@ public class Main {
             //Debug
             System.out.println(dot);
         }
+        lines.clear(); //Free up RAM
 
         //Calculate map size
         System.out.println("\nCalculating grid size: ");
@@ -56,6 +57,7 @@ public class Main {
         final int maxY = dotSources.stream().max(Comparator.comparingInt(dot -> dot.y)).get().y;
 
         final GridDataMap gridDataMap = GridDataMap.newMinMaxMap(minX, minY, maxX, maxY, 100);
+        System.out.println("\t" + gridDataMap);
 
         //Map data sources to ID for lookup
         final Map<Integer, DotSource> idToSource = new HashMap();
@@ -63,14 +65,55 @@ public class Main {
 
         //Plot dots and path out there influence
         System.out.println("\nPlotting data: ");
-        for (DotSource source : dotSources) {
-            try {
-                System.out.println("\nStarted path for " + source);
-                path(source, gridDataMap, idToSource);
-            } catch (Exception e) {
-                throw new RuntimeException("Unexpected error while plotting " + source, e);
+        gridDataMap.forEachPosition((x, y) -> {
+
+            int bestDistance = 0;
+            List<DotSource> owners = new ArrayList();
+            for (DotSource dot : dotSources) {
+
+                //See if any of the dot sources owns the position
+                if (x == dot.x && y == dot.y) {
+                    System.out.println("\t" + dot + " home is (" + x + ", " + y + ")");
+                    gridDataMap.insert(x, y, new GridDataPoint(dot.id, -1));
+                    return true;
+                }
+
+                //Get distance
+                int distance = dot.distanceMan(x, y);
+
+                //Lower value claims
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    owners.clear();
+                    owners.add(dot);
+                }
+                //Same value joins claim
+                else if (distance == bestDistance) {
+                    owners.add(dot);
+                } else if (owners.isEmpty()) {
+                    bestDistance = distance;
+                    owners.add(dot);
+                }
             }
-        }
+
+            if (!owners.isEmpty()) {
+
+                //Single owner
+                if (owners.size() == 1) {
+                    System.out.println("\t" + owners.get(0) + " claimed (" + x + ", " + y + ")");
+                    gridDataMap.insert(x, y, new GridDataPoint(owners.get(0).id, bestDistance));
+                }
+                //Several owners
+                else {
+                    System.out.println("\t" + owners.size() + " dots claimed (" + x + ", " + y + ")");
+                    gridDataMap.insert(x, y, new GridDataPoint(-1, bestDistance));
+                    gridDataMap.getData(x, y).tied.addAll(owners);
+                }
+            }
+
+
+            return true;
+        });
         generateGridView(file, gridDataMap);
 
         //Convert map data into blobs
@@ -96,7 +139,7 @@ public class Main {
                     }
                 }
                 return true;
-            }));
+            })) ;
 
             //Debug
             System.out.println("" + source + " size of " + source.count + " is infinite[" + source.infinite + "]");

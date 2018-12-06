@@ -121,8 +121,18 @@ public class GridDataMap {
                         || x == this.x
                         || x == ((this.x + this.sizeX) - 1);
 
-                if(!function.accept(x, y, getData(x, y), isEdge))
-                {
+                if (!function.accept(x, y, getData(x, y), isEdge)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public boolean forEachPosition(GridXYFunction function) {
+        for (int y = this.y; y < (this.y + this.sizeY); y++) {
+            for (int x = this.x; x < (this.x + this.sizeX); x++) {
+                if (!function.accept(x, y)) {
                     return false;
                 }
             }

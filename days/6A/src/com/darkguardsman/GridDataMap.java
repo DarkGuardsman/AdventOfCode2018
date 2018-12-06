@@ -18,7 +18,7 @@ public class GridDataMap {
 
     public static GridDataMap newMinMaxMap(int minX, int minY, int maxX, int maxY, int padding) {
         int x = minX - padding;
-        int y = maxY - padding;
+        int y = minY - padding;
         int sizeX = (maxX - minX) + padding * 2;
         int sizeY = (maxY - minY) + padding * 2;
 
@@ -71,7 +71,7 @@ public class GridDataMap {
 
     public void checkIfInMap(int index, int x, int y) {
         if (!insideMap(index)) {
-            throw new RuntimeException("Value of [" + x + ", " + y + "] is outside of the map");
+            throw new RuntimeException("Value of [" + x + ", " + y + "] is outside of the " + this);
         }
     }
 
@@ -111,5 +111,10 @@ public class GridDataMap {
         int index = getIndex(x, y);
         checkIfInMap(index, x, y);
         return data[index];
+    }
+
+    @Override
+    public String toString() {
+        return "GridDataMap[(" + x + ", " + y + ") - (" + (x + sizeX) + ", " + (y + sizeY) + ")]";
     }
 }

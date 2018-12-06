@@ -45,11 +45,11 @@ public class Main {
         for(Character c : charSet)
         {
             String polymer = polymerCode.replace("" +c, "");
-            polymer = polymerCode.replace("" + Character.toUpperCase(c), "");
+            polymer = polymer.replace("" + Character.toUpperCase(c), "");
 
             System.out.println("Testing removal of " + c);
 
-            int result = processAllCollisions(polymerCode);
+            int result = processAllCollisions(polymer);
             if(best == null || result < bestSize)
             {
                 best = c;

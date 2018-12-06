@@ -9,6 +9,9 @@ import com.darkguardsman.helpers.Dot;
 public class DotSource extends Dot {
     public final int id;
 
+    public int count = 0;
+    public boolean infinite = false;
+
     public DotSource(int x, int y, int id) {
         super(x, y);
         this.id = id;

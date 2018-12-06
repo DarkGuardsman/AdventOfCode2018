@@ -113,6 +113,23 @@ public class GridDataMap {
         return data[index];
     }
 
+    public boolean forEachCell(GridCellFunction function) {
+        for (int y = this.y; y < (this.y + this.sizeY); y++) {
+            for (int x = this.x; x < (this.x + this.sizeX); x++) {
+                boolean isEdge = y == this.y
+                        || y == ((this.y + this.sizeY) - 1)
+                        || x == this.x
+                        || x == ((this.x + this.sizeX) - 1);
+
+                if(!function.accept(x, y, getData(x, y), isEdge))
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     @Override
     public String toString() {
         return "GridDataMap[(" + x + ", " + y + ") - (" + (x + sizeX) + ", " + (y + sizeY) + ")]";

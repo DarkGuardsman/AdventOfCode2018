@@ -4,6 +4,7 @@ import com.darkguardsman.helpers.Direction2D;
 import com.darkguardsman.helpers.Dot;
 import com.darkguardsman.helpers.FileHelpers;
 
+import javax.sql.DataSource;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -48,6 +49,7 @@ public class Main {
         }
 
         //Calculate map size
+        System.out.println("\nCalculating grid size: ");
         final int minX = dotSources.stream().min(Comparator.comparingInt(dot -> dot.x)).get().x;
         final int maxX = dotSources.stream().max(Comparator.comparingInt(dot -> dot.x)).get().x;
         final int minY = dotSources.stream().min(Comparator.comparingInt(dot -> dot.y)).get().y;
@@ -60,6 +62,7 @@ public class Main {
         dotSources.forEach(dot -> idToSource.put(dot.id, dot));
 
         //Plot dots and path out there influence
+        System.out.println("\nPlotting data: ");
         for (DotSource source : dotSources) {
             try {
                 System.out.println("\nStarted path for " + source);
@@ -71,8 +74,43 @@ public class Main {
         generateGridView(file, gridDataMap);
 
         //Convert map data into blobs
+        // Decided this would take too much time, instead using a simple loop
+        // its less effective but easier to code
+        // original idea was to map all points back to the source
+        // then visualize the shapes and calculate data related
+        // hence the name blob since the shape would be like the blob
 
         //Get Largest without infinite
+        System.out.println("\nProcessing: ");
+        int largestSize = 0;
+        DotSource largest = null;
+        for (DotSource source : dotSources) {
+
+            //Search all grid cells for data matching source
+            if (gridDataMap.forEachCell((x, y, data, edge) -> {
+                if (data != null && data.owner == source.id) {
+                    source.count += 1;
+                    if (edge) {
+                        source.infinite = true;
+                        return false;
+                    }
+                }
+                return true;
+            }));
+
+            //Debug
+            System.out.println("" + source + " size of " + source.count + " is infinite[" + source.infinite + "]");
+
+            //Check if largest
+            if (!source.infinite && (source.count > largestSize || largest == null)) {
+                largestSize = source.count;
+                largest = source;
+            }
+        }
+
+        //Output result
+        System.out.println("\nLargest non-infinite: " + largest);
+        System.out.println("\nLargest size: " + largestSize);
     }
 
     static void generateGridView(File file, GridDataMap gridDataMap) {
@@ -105,7 +143,25 @@ public class Main {
         }
     }
 
+    /**
+     * Paths all points from the source adding new values to the map
+     * <p>
+     * Values are added when:
+     * - Previous value was null
+     * - Previous value was the source's position
+     * - Previous value was greater in distance then new value
+     * <p>
+     * Values are updated:
+     * - Overlap exists
+     *
+     * @param source
+     * @param gridDataMap
+     * @param idToSource
+     */
     static void path(DotSource source, GridDataMap gridDataMap, Map<Integer, DotSource> idToSource) {
+
+        //Honestly this could be replaced with two foreach loops and still get the same result... slightly slower total time
+
         //Breadth first pathfinder
         // Map out all places we can take
         // Each run will replace entries of last run
@@ -166,9 +222,7 @@ public class Main {
                                 System.out.println("\t\t#" + source.id + " tied with server sources for " + dot);
                                 point.tied.add(source);
                             }
-                        }
-                        else
-                        {
+                        } else {
                             System.out.println("\t\t#" + source.id + " failed to overpower tile owned by #" + point.owner + " " + point.distance);
                         }
                     } else {

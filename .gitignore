@@ -37,3 +37,7 @@ days/6A/run/grid_output\.csv
 days/6A/run/grid_image\.png
 
 *.png
+
+src/com/darkguardsman/helpers/MainTestTreeMapStringInteger\.java
+
+*.csv

@@ -52,8 +52,10 @@ public class GridDataMap {
         return getIndexInternal(xx, yy);
     }
 
-    public int getIndexInternal(int x, int y)
-    {
+    public int getIndexInternal(int x, int y) {
+        if (x < 0 || y < 0) {
+            System.out.println("XY should be above zero to prevent errors (" + x + ", " + y + ")");
+        }
         return y * sizeY + x;
     }
 
@@ -67,6 +69,10 @@ public class GridDataMap {
      * @return true if inside the map
      */
     public boolean insideMap(int x, int y) {
+        if(x < this.x || y < this.y || x >= (this.x + sizeX) || y >= (this.y + sizeY))
+        {
+            return false;
+        }
         return insideMap(getIndex(x, y));
     }
 
@@ -131,8 +137,7 @@ public class GridDataMap {
         return true;
     }
 
-    public boolean isOnEdge(int x, int y)
-    {
+    public boolean isOnEdge(int x, int y) {
         return !insideMap(x + 1, y)
                 || !insideMap(x - 1, y)
                 || !insideMap(x, y + 1)

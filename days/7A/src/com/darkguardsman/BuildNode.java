@@ -10,39 +10,25 @@ import java.util.List;
 public class BuildNode {
     public final char id;
 
-    public final List<BuildNode> pathsInto = new ArrayList();
-    public final List<BuildNode> pathsOutFrom = new ArrayList();
+    public final List<BuildNode> prevNodes = new ArrayList();
+    public final List<BuildNode> nextNodes = new ArrayList();
 
     public BuildNode(char id) {
         this.id = id;
     }
 
-    public void addPath(BuildNode path, boolean intoThis) {
-        if (intoThis) {
-            if (!pathsInto.contains(path)) {
-                pathsInto.add(path);
-            } else {
-                throw new RuntimeException("We already have a path into " + this + " from " + path);
-            }
-            if (!path.pathsOutFrom.contains(this)) {
-                path.pathsOutFrom.add(this);
-            } else {
-                throw new RuntimeException("We already have a path from " + this + " into " + path);
-            }
-        } else {
-            if (!pathsOutFrom.contains(path)) {
-                pathsOutFrom.add(path);
-            } else {
-                throw new RuntimeException("We already have a path into " + this + " from " + path);
-            }
-            if (!path.pathsInto.contains(this)) {
-                path.pathsInto.add(this);
-            } else {
-                throw new RuntimeException("We already have a path from " + this + " into " + path);
-            }
-        }
+    public void addPath(BuildNode path) {
 
-        //TODO check for circle path
+        if (!nextNodes.contains(path)) {
+            nextNodes.add(path);
+        } else {
+            throw new RuntimeException("We already have a path into " + this + " from " + path);
+        }
+        if (!path.prevNodes.contains(this)) {
+            path.prevNodes.add(this);
+        } else {
+            throw new RuntimeException("We already have a path from " + this + " into " + path);
+        }
     }
 
     @Override
@@ -50,16 +36,14 @@ public class BuildNode {
 
         //Map nodes into this
         String into = "";
-        for(BuildNode node : pathsInto)
-        {
+        for (BuildNode node : prevNodes) {
             into += " ";
             into += node.id;
         }
 
         //Map nodes out of this
         String out = "";
-        for(BuildNode node : pathsOutFrom)
-        {
+        for (BuildNode node : nextNodes) {
             out += " ";
             out += node.id;
         }

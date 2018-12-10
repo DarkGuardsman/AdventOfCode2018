@@ -23,6 +23,39 @@ public class Main {
 
         //Read file
         System.out.println("\nReading File: ");
-        final List<String> lines = FileHelpers.getLines(file);
+        final String line = FileHelpers.getAsString(file);
+        String[] split = line.split("\\s");
+        Queue<Integer> numbers = new LinkedList();
+        for(String s : split)
+        {
+            s = s.trim();
+            numbers.add(Integer.parseInt(s));
+        }
+
+        Node root = captureNodes(numbers);
+
+        int metaSum = root.sumMeta();
+        System.out.println("Sum: " + metaSum);
+    }
+
+    static Node captureNodes(Queue<Integer> numbers)
+    {
+        final int nodeCount = numbers.poll();
+        final int metaCount = numbers.poll();
+
+        final Node node = new Node();
+
+        //Collect nodes
+        for(int i = 0; i < nodeCount; i++)
+        {
+            node.nodes.add(captureNodes(numbers));
+        }
+
+        //Capture meta at end of data
+        for(int i = 0; i < metaCount; i++)
+        {
+            node.meta.add(numbers.poll());
+        }
+        return node;
     }
 }

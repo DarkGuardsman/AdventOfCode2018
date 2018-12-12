@@ -68,6 +68,11 @@ public class Main {
         //Print start condition
         outputPlantRow("I", prevGeneration);
 
+        long lastSumDelta = 0;
+        long lastSum = 0;
+        int repeatCount = 0;
+        long lastRepeatIndex = 0;
+
         //loop pots
         for (long generation = 0; generation <= generations; generation++) {
 
@@ -86,14 +91,40 @@ public class Main {
                 }
             }
 
-            outputPlantRow("" + generation, nextGeneration);
-            System.out.println("\tSum: " + getSum(pots, zeroStart, nextGeneration));
-            System.out.println("\tDelta: " + (getSum(pots, zeroStart, nextGeneration) - getSum(pots, zeroStart, prevGeneration)));
+            long sum = getSum(pots, zeroStart, nextGeneration);
+            long sumDelta = sum - lastSum;
+            if(sumDelta == lastSumDelta)
+            {
+                repeatCount++;
+                lastRepeatIndex = generation;
+                lastSum = sum;
+            }
+            else
+            {
+                repeatCount = 0;
+            }
+
+            if(repeatCount > 5)
+            {
+                break;
+            }
+
+            //Save current as last
+            lastSum = sum;
+            lastSumDelta = sumDelta;
             prevGeneration = nextGeneration;
+
+            //Output for debug
+            outputPlantRow("" + generation, nextGeneration);
+            System.out.println("\tSum: " + sum);
+            System.out.println("\tDelta: " + sumDelta);
         }
 
+        long answer = (generations - (lastRepeatIndex + 1)) * lastSumDelta + lastSum;
+
         System.out.println("\nCalculating: ");
-        System.out.println("\tAnswer: " + getSum(pots, zeroStart, prevGeneration));
+        System.out.println("\tAnswer: " + answer);
+        System.out.println("\tAnswer: " + String.format("%,.0f", (double)answer));
     }
 
     static long getSum(int pots, int zeroStart, char[] prevGeneration)

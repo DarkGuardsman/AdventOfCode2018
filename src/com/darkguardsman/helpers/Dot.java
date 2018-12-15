@@ -15,6 +15,11 @@ public class Dot {
         this.y = y;
     }
 
+    public Dot(int x, int y, Direction2D direction) {
+        this.x = x + direction.offsetX;
+        this.y = y + direction.offsetY;
+    }
+
     public Dot add(Direction2D direction2D) {
         return add(direction2D.offsetX, direction2D.offsetY);
     }

@@ -27,6 +27,24 @@ public class FileHelpers {
         return lines;
     }
 
+    public static List<String> getLinesNoTrim(File file) {
+        List<String> lines = new ArrayList();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                lines.add(line);
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return lines;
+    }
+
     public static String getAsString(File file) {
         StringBuilder builder = new StringBuilder();
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {

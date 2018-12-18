@@ -3,6 +3,7 @@ package com.darkguardsman;
 import com.darkguardsman.helpers.Direction2D;
 import com.darkguardsman.helpers.Dot;
 import com.darkguardsman.helpers.grid.GridChar;
+import com.darkguardsman.helpers.grid.GridInt;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -12,6 +13,9 @@ import java.util.stream.Collectors;
  * Created by Dark(DarkGuardsman, Robert) on 12/18/18.
  */
 public class Unit {
+
+    private static GridInt PATH_GRID;
+
     public final boolean elf;
 
     public int attack = 3;
@@ -56,18 +60,26 @@ public class Unit {
             //Remove any dots that we can not reach
             openSpaces.removeIf(dot -> !canReach(dot, grid, unitsList));
 
-            //Sort by step count -> y -> x
-            openSpaces.sort((a, b) -> {
-                int stepA = getStepsTo(a.x, a.y);
-                int stepB = getStepsTo(b.x, b.y);
-                if (stepA == stepB) {
-                    if (a.y == b.y) {
-                        return Integer.compare(a.x, b.x);
+            if(openSpaces.size() > 0) {
+                //Sort by step count -> y -> x
+                openSpaces.sort((a, b) -> {
+                    final int stepA = getStepsTo(grid, a.x, a.y);
+                    final int stepB = getStepsTo(grid, b.x, b.y);
+                    if (stepA == stepB) {
+                        if (a.y == b.y) {
+                            return Integer.compare(a.x, b.x);
+                        }
+                        return Integer.compare(a.y, b.y);
                     }
-                    return Integer.compare(a.y, b.y);
-                }
-                return Integer.compare(stepA, stepB);
-            });
+                    return Integer.compare(stepA, stepB);
+                });
+
+                //Get target spot
+                final Dot moveTarget = openSpaces.get(0);
+
+                //Find next best tile to move towards target
+
+            }
         }
 
         //Attack target if we have one
@@ -77,11 +89,19 @@ public class Unit {
         }
     }
 
-    boolean canReach(Dot startDot, GridChar grid, List<Unit> unitsList) {
+    boolean canReach(Dot targetDot, GridChar grid, List<Unit> unitsList) {
+
+        final Dot startDot = new Dot(x, y);
+
+        //Just in case we are already there
+        if (targetDot == startDot) {
+            return true;
+        }
 
         final Queue<Dot> dots = new LinkedList();
         final Set<Dot> pathed = new HashSet();
 
+        //Add start
         dots.add(startDot);
 
         while (dots.peek() != null) {
@@ -96,6 +116,11 @@ public class Unit {
 
                 //Get next
                 final Dot next = current.add(direction2D);
+
+                //Check if we reached target, most likely to trigger
+                if (next.equals(targetDot)) {
+                    return true;
+                }
 
                 //Ensure we have not pathed
                 if (!pathed.contains(next)) {
@@ -113,11 +138,20 @@ public class Unit {
             }
         }
 
-        return true;
+        return false;
     }
 
-    int getStepsTo(int x, int y) {
-        return 1;
+    int getStepsTo(GridChar grid, int targetX, int targetY) {
+
+        //Generate collision grid
+        if (PATH_GRID == null) {
+            PATH_GRID = new GridInt(grid.sizeX, grid.sizeY);
+        }
+        PATH_GRID.fillGrid((g, x, y) -> g.getData(x, y) != Main.OPEN_TILE, () -> -1);
+
+        //Count steps to target
+
+        return 0;
     }
 
     Unit getTargetNear(List<Unit> allTargets) {

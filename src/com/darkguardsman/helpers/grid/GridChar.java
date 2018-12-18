@@ -9,7 +9,7 @@ import java.util.function.BiFunction;
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
  * Created by Dark(DarkGuardsman, Robert) on 12/15/2018.
  */
-public class GridChar extends GridPrefab {
+public class GridChar extends GridPrefab<GridChar> {
     private char[][] data;
 
     public GridChar(int sizeX, int sizeY) {
@@ -95,15 +95,5 @@ public class GridChar extends GridPrefab {
             return false;
         });
         System.out.println(builder.toString());
-    }
-
-    public void forEach(GridCellFunction<GridChar> function) {
-        for (int y = 0; y < sizeY; y++) {
-            for (int x = 0; x < sizeX; x++) {
-                if (function.onCell(this, x, y)) {
-                    return;
-                }
-            }
-        }
     }
 }

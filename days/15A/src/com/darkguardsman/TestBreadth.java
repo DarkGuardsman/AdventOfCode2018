@@ -37,7 +37,7 @@ public class TestBreadth {
         };
         path.shouldPathFunction = (start, current, next, pathed) -> {
             if (!pathed) {
-                return grid.isInGrid(next);
+                return grid.isInGrid(next) && grid.getData(next) == -1;
             }
             return false;
         };

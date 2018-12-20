@@ -4,6 +4,7 @@ import com.darkguardsman.helpers.Direction2D;
 import com.darkguardsman.helpers.Dot;
 import com.darkguardsman.helpers.grid.GridChar;
 import com.darkguardsman.helpers.grid.GridInt;
+import com.darkguardsman.helpers.path.BreadthFirstPath;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 public class Unit {
 
     private static GridInt PATH_GRID;
+    private static BreadthFirstPath PATHFINDER;
 
     public final boolean elf;
 
@@ -58,13 +60,14 @@ public class Unit {
             });
 
             //Remove any dots that we can not reach
-            openSpaces.removeIf(dot -> !canReach(dot, grid, unitsList));
+            final GridInt distanceGrid = getStepGrid(grid, x, y, unitsList);
+            openSpaces.removeIf(dot -> distanceGrid.getData(x, y) < 0);
 
-            if(openSpaces.size() > 0) {
+            if (openSpaces.size() > 0) {
                 //Sort by step count -> y -> x
                 openSpaces.sort((a, b) -> {
-                    final int stepA = getStepsTo(grid, a.x, a.y);
-                    final int stepB = getStepsTo(grid, b.x, b.y);
+                    final int stepA = getStepsTo(grid, a.x, a.y, unitsList);
+                    final int stepB = getStepsTo(grid, b.x, b.y, unitsList);
                     if (stepA == stepB) {
                         if (a.y == b.y) {
                             return Integer.compare(a.x, b.x);
@@ -79,6 +82,31 @@ public class Unit {
 
                 //Find next best tile to move towards target
 
+                //Get steps to each time from target
+                final GridInt stepGrid = getStepGrid(grid, moveTarget.x, moveTarget.y, unitsList);
+
+                //Find best direction
+                Direction2D moveDirection = null;
+                int moveStepDistance = 0;
+                for (Direction2D direction2D : Direction2D.MAIN) {
+                    final int stepX = x + direction2D.offsetX;
+                    final int stepY = y + direction2D.offsetY;
+                    if(isOpenTile(grid, stepX, stepY, unitsList))
+                    {
+                        final int steps = stepGrid.getData(stepX, stepY);
+                        if(moveDirection == null || moveStepDistance < steps) {
+                            moveDirection = direction2D;
+                            moveStepDistance = steps;
+                        }
+                    }
+                }
+
+                //Move unit
+                x += moveDirection.offsetX;
+                y += moveDirection.offsetY;
+
+                //Try to find a target again
+                target = getTargetNear(targets);
             }
         }
 
@@ -89,69 +117,21 @@ public class Unit {
         }
     }
 
-    boolean canReach(Dot targetDot, GridChar grid, List<Unit> unitsList) {
-
-        final Dot startDot = new Dot(x, y);
-
-        //Just in case we are already there
-        if (targetDot == startDot) {
-            return true;
-        }
-
-        final Queue<Dot> dots = new LinkedList();
-        final Set<Dot> pathed = new HashSet();
-
-        //Add start
-        dots.add(startDot);
-
-        while (dots.peek() != null) {
-            //Get current path node
-            final Dot current = dots.poll();
-
-            //Mark as pathed, so we don't repath
-            pathed.add(current);
-
-            //Get next dots
-            for (Direction2D direction2D : Direction2D.MAIN) {
-
-                //Get next
-                final Dot next = current.add(direction2D);
-
-                //Check if we reached target, most likely to trigger
-                if (next.equals(targetDot)) {
-                    return true;
-                }
-
-                //Ensure we have not pathed
-                if (!pathed.contains(next)) {
-
-                    //Make sure its not a wall or unit that can block our path
-                    if (unitsList.stream().anyMatch(u -> u.x != next.x && u.y == next.y)
-                            && grid.getData(next.x, next.y) == Main.OPEN_TILE) {
-                        dots.offer(next);
-                    }
-                    //If it is a blocking tile, add to pathed so we don't recheck
-                    else {
-                        pathed.add(next);
-                    }
-                }
-            }
-        }
-
-        return false;
+    boolean isOpenTile(GridChar grid, int x, int y, List<Unit> unitsList) {
+        return grid.getData(x, y) == Main.OPEN_TILE
+                && !unitsList.stream().anyMatch(u -> u.x != x && u.y == y);
     }
 
-    int getStepsTo(GridChar grid, int targetX, int targetY) {
-
-        //Generate collision grid
-        if (PATH_GRID == null) {
-            PATH_GRID = new GridInt(grid.sizeX, grid.sizeY);
-        }
-        PATH_GRID.fillGrid((g, x, y) -> g.getData(x, y) != Main.OPEN_TILE, () -> -1);
-
-        //Count steps to target
-
-        return 0;
+    /**
+     * Numbers of steps from the position to our position
+     *
+     * @param grid
+     * @param targetX
+     * @param targetY
+     * @return
+     */
+    int getStepsTo(GridChar grid, int targetX, int targetY, List<Unit> unitList) {
+        return getStepGrid(grid, targetX, targetY, unitList).getData(x, y);
     }
 
     Unit getTargetNear(List<Unit> allTargets) {
@@ -179,5 +159,45 @@ public class Unit {
     boolean attack(Unit unit) {
         unit.hp -= attack;
         return unit.hp <= 0;
+    }
+
+    /**
+     * Gets the number of steps to any other tile
+     *
+     * @param map
+     * @param startX
+     * @param startY
+     * @return
+     */
+    GridInt getStepGrid(GridChar map, int startX, int startY, List<Unit> unitList) {
+        //Setup step grid
+        if (PATH_GRID == null) {
+            PATH_GRID = new GridInt(map.sizeX, map.sizeY);
+        }
+        //Setup pathfinder
+        if (PATH_GRID == null) {
+            PATHFINDER = new BreadthFirstPath();
+            PATHFINDER.onPathFunction = (current, next) -> {
+                final int currentDotValue = PATH_GRID.getData(current);
+                final int nextDotValue = PATH_GRID.getData(next);
+                if (nextDotValue == -1) {
+                    PATH_GRID.setData(next.x, next.y, currentDotValue + 1);
+                }
+            };
+            PATHFINDER.shouldPathFunction = (start, current, next, pathed) -> {
+                if (!pathed) {
+                    return PATH_GRID.isInGrid(next) && PATH_GRID.getData(next) == -1;
+                }
+                return false;
+            };
+        }
+
+        //Reset data
+        PATH_GRID.fillGrid(null, () -> -1); //-1 is default
+        PATH_GRID.fillGrid((g, x, y) -> !isOpenTile(map, x, y, unitList), () -> -2); //-2 is not path
+        PATH_GRID.setData(startX, startY, 0);
+        PATHFINDER.startPath(new Dot(startX, startY));
+
+        return PATH_GRID;
     }
 }

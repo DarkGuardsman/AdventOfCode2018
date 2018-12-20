@@ -42,7 +42,7 @@ public class GridInt extends GridPrefab<GridInt> {
 
     public void fillGrid(GridConditionalFunction<GridInt> conditionalFunction, IntSupplier supplier) {
         forEach((g, x, y) -> {
-            if (conditionalFunction.isTrue(g, x, y)) {
+            if (conditionalFunction == null || conditionalFunction.isTrue(g, x, y)) {
                 g.setData(x, y, supplier.getAsInt());
             }
             return false;

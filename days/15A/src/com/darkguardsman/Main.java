@@ -81,6 +81,9 @@ public class Main {
                     unit.takeTurn(grid, units);
                 }
             }
+
+            //Debug
+            print(grid, units);
         }
     }
 

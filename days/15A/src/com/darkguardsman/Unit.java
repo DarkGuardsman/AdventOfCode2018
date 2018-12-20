@@ -2,6 +2,7 @@ package com.darkguardsman;
 
 import com.darkguardsman.helpers.Direction2D;
 import com.darkguardsman.helpers.Dot;
+import com.darkguardsman.helpers.StringHelpers;
 import com.darkguardsman.helpers.grid.GridChar;
 import com.darkguardsman.helpers.grid.GridInt;
 import com.darkguardsman.helpers.path.BreadthFirstPath;
@@ -28,10 +29,14 @@ public class Unit {
 
     public int turnIndex = 0;
 
+    public final int id;
+    private static int idCounter = 0;
+
     public Unit(boolean elf, int x, int y) {
         this.elf = elf;
         this.x = x;
         this.y = y;
+        this.id = idCounter++;
     }
 
     public void takeTurn(GridChar grid, List<Unit> unitsList) {
@@ -39,8 +44,12 @@ public class Unit {
         //Get list of targets on map
         final List<Unit> targets = unitsList.stream().filter(u -> u.elf != elf).collect(Collectors.toList());
 
+        System.out.println(this + "> Found " + targets.size() + " targets");
+
         //Try to see if we have a target nearby
         Unit target = getTargetNear(targets);
+
+        System.out.println(this + "> Target Near = " + target);
 
         //Find target
         if (target == null) {
@@ -59,9 +68,13 @@ public class Unit {
                 }
             });
 
+            System.out.println(this + "> Open Spaces = " + openSpaces.size());
+
             //Remove any dots that we can not reach
             final GridInt distanceGrid = getStepGrid(grid, x, y, unitsList);
             openSpaces.removeIf(dot -> distanceGrid.getData(x, y) < 0);
+
+            System.out.println(this + "> Valid Spaces = " + openSpaces.size());
 
             if (openSpaces.size() > 0) {
                 //Sort by step count -> y -> x
@@ -80,10 +93,13 @@ public class Unit {
                 //Get target spot
                 final Dot moveTarget = openSpaces.get(0);
 
+                System.out.println(this + "> Move Target = " + moveTarget);
+
                 //Find next best tile to move towards target
 
                 //Get steps to each time from target
                 final GridInt stepGrid = getStepGrid(grid, moveTarget.x, moveTarget.y, unitsList);
+                print(stepGrid);
 
                 //Find best direction
                 Direction2D moveDirection = null;
@@ -91,35 +107,43 @@ public class Unit {
                 for (Direction2D direction2D : Direction2D.MAIN) {
                     final int stepX = x + direction2D.offsetX;
                     final int stepY = y + direction2D.offsetY;
-                    if(isOpenTile(grid, stepX, stepY, unitsList))
-                    {
+                    if (isOpenTile(grid, stepX, stepY, unitsList)) {
                         final int steps = stepGrid.getData(stepX, stepY);
-                        if(moveDirection == null || moveStepDistance < steps) {
+                        if (moveDirection == null || moveStepDistance < steps) {
                             moveDirection = direction2D;
                             moveStepDistance = steps;
                         }
                     }
                 }
 
-                //Move unit
-                x += moveDirection.offsetX;
-                y += moveDirection.offsetY;
+                if (moveDirection != null) { //TODO validate if we have directions before pathing to improve performance
+                    //Move unit
+                    x += moveDirection.offsetX;
+                    y += moveDirection.offsetY;
 
-                //Try to find a target again
-                target = getTargetNear(targets);
+                    System.out.println(this + "> Moved to " + x + "," + y);
+
+                    //Try to find a target again
+                    target = getTargetNear(targets);
+
+                    System.out.println(this + "> Target Near = " + target);
+                }
             }
         }
 
         //Attack target if we have one
-        if (target != null && attack(target)) {
-            //Target is dead
-            unitsList.remove(target);
+        if (target != null) {
+            System.out.println(this + "> Attacking " + target);
+            if (attack(target)) {
+                //Target is dead
+                unitsList.remove(target);
+            }
         }
     }
 
     boolean isOpenTile(GridChar grid, int x, int y, List<Unit> unitsList) {
         return grid.getData(x, y) == Main.OPEN_TILE
-                && !unitsList.stream().anyMatch(u -> u.x != x && u.y == y);
+                && !unitsList.stream().anyMatch(u -> u.x == x && u.y == y);
     }
 
     /**
@@ -175,7 +199,7 @@ public class Unit {
             PATH_GRID = new GridInt(map.sizeX, map.sizeY);
         }
         //Setup pathfinder
-        if (PATH_GRID == null) {
+        if (PATHFINDER == null) {
             PATHFINDER = new BreadthFirstPath();
             PATHFINDER.onPathFunction = (current, next) -> {
                 final int currentDotValue = PATH_GRID.getData(current);
@@ -196,8 +220,27 @@ public class Unit {
         PATH_GRID.fillGrid(null, () -> -1); //-1 is default
         PATH_GRID.fillGrid((g, x, y) -> !isOpenTile(map, x, y, unitList), () -> -2); //-2 is not path
         PATH_GRID.setData(startX, startY, 0);
+
+        //Path all locations finding distance to each
         PATHFINDER.startPath(new Dot(startX, startY));
 
         return PATH_GRID;
+    }
+
+    void print(GridInt grid) {
+        //Output results
+        grid.print((gx, gy) -> {
+            if (grid.getData(gx, gy) == -2) {
+                return StringHelpers.padLeft("#", 3);
+            } else if (grid.getData(gx, gy) < 0) {
+                return StringHelpers.padLeft(".", 3);
+            }
+            return StringHelpers.padLeft("" + grid.getData(gx, gy), 3);
+        });
+    }
+
+    @Override
+    public String toString() {
+        return (elf ? "ELF" : "GOB") + "[" + id + " | " + turnIndex + " | " + x + ", " + y + " | " + hp + "]";
     }
 }

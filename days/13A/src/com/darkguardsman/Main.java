@@ -108,7 +108,7 @@ public class Main
                 {
                     if (cart.x == x && cart.y == y)
                     {
-                        return CART_DIRECTIONS[cart.direction.ordinal()];
+                        return "" + CART_DIRECTIONS[cart.direction.ordinal()];
                     }
                 }
                 return null;

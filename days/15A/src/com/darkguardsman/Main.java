@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.stream.Collectors;
 
 /**
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
@@ -55,6 +56,8 @@ public class Main {
         System.out.println("\nStarting battle: ");
 
         //Loop until there are no enemies
+        int run = 0;
+        exitWhile:
         while(true)
         {
             //Initiative
@@ -65,6 +68,7 @@ public class Main {
             int goblinsLeft = (int)units.stream().filter(u -> !u.elf).count();
             if(elfsLeft == 0 || goblinsLeft == 0)
             {
+                System.out.println("end-----------------------------------------");
                 break;
             }
 
@@ -76,15 +80,35 @@ public class Main {
             {
                 final Unit unit = turnOrder.poll();
                 //If not in list it died before its turn
-                if(units.contains(unit))
+                if(units.contains(unit) && unit.hp > 0)
                 {
-                    unit.takeTurn(grid, units);
+                    if(!unit.takeTurn(grid, units))
+                    {
+                        System.out.println("end-----------------------------------------");
+                        break exitWhile;
+                    }
                 }
             }
 
+            //Remove the dead
+            units.removeIf(u -> u.hp <= 0);
+
             //Debug
             print(grid, units);
+
+            //Count runs
+            run += 1;
+            System.out.println(run + "-----------------------------------------");
         }
+        System.out.println("\nResult: ");
+
+
+        int sum = units.stream().mapToInt(u -> u.hp).sum();
+        int result = sum * run;
+
+        System.out.println("\tSum: " + sum);
+        System.out.println("\tRuns: " + run);
+        System.out.println("\tScore: " + result);
     }
 
     static void sort(List<Unit> units)
@@ -109,7 +133,12 @@ public class Main {
         grid.print((x, y) -> {
             for (Unit unit : units) {
                 if (unit.x == x && unit.y == y) {
-                    return unit.elf ? ELF : GOBLIN;
+                    return "" + (unit.elf ? ELF : GOBLIN);
+                }
+
+                if(x == (grid.sizeX -1))
+                {
+                    return grid.getData(x, y) + "\t" + units.stream().filter(u -> u.y == y).map(u -> u.toString()).collect(Collectors.joining(", "));
                 }
             }
             return null;

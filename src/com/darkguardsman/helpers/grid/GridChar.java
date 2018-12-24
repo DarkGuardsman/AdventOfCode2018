@@ -1,8 +1,13 @@
 package com.darkguardsman.helpers.grid;
 
 import com.darkguardsman.helpers.Dot;
+import com.darkguardsman.helpers.StringHelpers;
 
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.function.BiFunction;
 
 /**
@@ -12,11 +17,19 @@ import java.util.function.BiFunction;
 public class GridChar extends GridPrefab<GridChar>
 {
     private char[][] data;
+    private static final HashMap<Integer, Color> idToColor = new HashMap();
+    private static final Random rand = new Random();
 
     public GridChar(int sizeX, int sizeY)
     {
         super(sizeX, sizeY);
         this.data = new char[sizeX][sizeY];
+    }
+
+    public GridChar(int sizeX, int sizeY, char fill)
+    {
+        this(sizeX, sizeY);
+        fillSimple(fill);
     }
 
     public void setData(int x, int y, char value)
@@ -43,6 +56,14 @@ public class GridChar extends GridPrefab<GridChar>
             return data[x][y];
         }
         return '@';
+    }
+
+    public void fillSimple(char c)
+    {
+        forEach((g, x, y) -> {
+            g.setData(x, y, c);
+            return false;
+        });
     }
 
     /**
@@ -94,10 +115,15 @@ public class GridChar extends GridPrefab<GridChar>
     public void print(BiFunction<Integer, Integer, String> renderOverride)
     {
         final StringBuilder builder = new StringBuilder();
+        int padding = (sizeY + "").length() + 1;
         forEach((grid, x, y) -> {
-            if (x == 0 && y != 0)
+            if (x == 0)
             {
-                builder.append("\n");
+                if (y != 0)
+                {
+                    builder.append("\n");
+                }
+                builder.append(StringHelpers.padRight("" + y, padding));
             }
             if (renderOverride != null)
             {
@@ -113,6 +139,40 @@ public class GridChar extends GridPrefab<GridChar>
             return false;
         });
         System.out.println(builder.toString());
+    }
+
+
+    public BufferedImage generateImage() //TODO abstract to super prefab
+    {
+        final BufferedImage rawImage = new BufferedImage(sizeX, sizeY, BufferedImage.TYPE_INT_ARGB);
+
+        //Set pixel to color based on data at xy
+        forEach((g, x, y) ->
+        {
+            rawImage.setRGB(x, y, getColor(x, y).getRGB());
+            return false;
+        });
+
+        return rawImage;
+    }
+
+    private Color getColor(int x, int y) //TODO abstract to super prefab
+    {
+        int id = getColorID(x, y);
+        //Create random color
+        if (!idToColor.containsKey(id))
+        {
+            float r = rand.nextFloat();
+            float g = rand.nextFloat();
+            float b = rand.nextFloat();
+            idToColor.put(id, new Color(r, g, b));
+        }
+        return idToColor.get(id);
+    }
+
+    private int getColorID(int x, int y) //TODO abstract to super prefab, use hashcode() as ID for colors
+    {
+        return (int) getData(x, y);
     }
 
     public GridChar copy()

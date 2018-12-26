@@ -10,10 +10,7 @@ import javafx.util.Pair;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -22,6 +19,7 @@ import java.util.stream.Collectors;
  */
 public class Main
 {
+
     public static final char WATER = '|';
     public static final char WATER_REST = '~';
     public static final char CLAY = '#';
@@ -36,6 +34,7 @@ public class Main
     public static void main(String... args)
     {
         file = new File(args[0]);
+        boolean outputFrames = args.length > 1 ? Boolean.parseBoolean(args[1]) : false;
 
         final int springX = 500;
         final int springY = 0;
@@ -66,7 +65,8 @@ public class Main
 
         //Offset all data to min so it can be measured from zero to make it easier to draw
         System.out.println("\nNormalizing Data to Grid: ");
-        drawLines.forEach(d -> {
+        drawLines.forEach(d ->
+        {
             if (d.xAxis)
             {
                 d.axis -= minX;
@@ -84,7 +84,8 @@ public class Main
 
         //For each line draw
         System.out.println("\nDraw Grid: ");
-        drawLines.forEach(d -> {
+        drawLines.forEach(d ->
+        {
             System.out.println("\t" + d);
             d.draw(gridChar);
         });
@@ -109,16 +110,26 @@ public class Main
         System.out.println("\nFilling water: ");
         gridChar.setData(springX - minX, springY + 1, '|');
 
-        final Queue<Pair<Dot, Character>> edits = new LinkedList();
+        final Queue<Pair<Dot, Character>> edits;
 
-        //Each time we change the grid save an image, it massively slows down the program but makes for a good result
-        gridChar.onChangeFunction = (g, gx, gy, ov, nv) -> {
-            if (ov != nv)
+        if (outputFrames)
+        {
+            edits = new LinkedList();
+
+            //Each time we change the grid save an image, it massively slows down the program but makes for a good result
+            gridChar.onChangeFunction = (g, gx, gy, ov, nv) ->
             {
-                edits.offer(new Pair(new Dot(gx, gy), nv));
-            }
-            return true;
-        };
+                if (ov != nv)
+                {
+                    edits.offer(new Pair(new Dot(gx, gy), nv));
+                }
+                return true;
+            };
+        }
+        else
+        {
+            edits = null;
+        }
 
         //Count runs, for debug reasons
         int runs = 0;
@@ -146,14 +157,32 @@ public class Main
             runs++;
         }
 
-        //Generate images
         System.out.println("\nGenerating images of edits: ");
-        System.out.println("\tEdits: " + edits.size());
-        while (edits.peek() != null)
+        if (outputFrames)
         {
-            Pair<Dot, Character> edit = edits.poll();
-            generateGridImage(new File(file.getParent(), getFileName(imageSaveCounter++)), edit.getKey().x, edit.getKey().y, edit.getValue());
+            //Generate images
+            System.out.println("\tEdits: " + edits.size());
+            while (edits.peek() != null)
+            {
+                Pair<Dot, Character> edit = edits.poll();
+                generateGridImage(new File(file.getParent(), getFileName(imageSaveCounter++)), edit.getKey().x, edit.getKey().y, edit.getValue());
+            }
         }
+
+        ImageHelpers.savePNG(new File(file.getParent(), "out/outputEnd.png"), gridChar.generateImage(imageBuffer));
+
+        System.out.println("\nCounting water: ");
+        final List<Character> list = new ArrayList();
+        gridChar.forEach((g, gx, gy) ->
+        {
+            char value = gridChar.getDataIfGrid(gx, gy);
+            if (value == WATER || value == WATER_REST)
+            {
+                list.add(value);
+            }
+            return false;
+        });
+        System.out.println("\tCount: " + list.size());
     }
 
     static String getFileName(int index)

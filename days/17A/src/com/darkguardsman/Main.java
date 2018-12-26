@@ -1,15 +1,19 @@
 package com.darkguardsman;
 
 
+import com.darkguardsman.helpers.Dot;
 import com.darkguardsman.helpers.FileHelpers;
 import com.darkguardsman.helpers.StringHelpers;
 import com.darkguardsman.helpers.grid.GridChar;
 import com.darkguardsman.helpers.image.ImageHelpers;
+import javafx.util.Pair;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.stream.Collectors;
 
 /**
@@ -23,9 +27,15 @@ public class Main
     public static final char CLAY = '#';
     public static final char AIR = '.';
 
+    private static int imageSaveCounter = 1;
+    private static File file;
+    private static GridChar gridChar;
+
+    private static BufferedImage imageBuffer;
+
     public static void main(String... args)
     {
-        final File file = new File(args[0]);
+        file = new File(args[0]);
 
         final int springX = 500;
         final int springY = 0;
@@ -39,6 +49,7 @@ public class Main
         List<DrawLine> drawLines = getDrawLines(lines);
         drawLines.forEach(d -> System.out.println("\t" + d));
 
+        ///Get size of the grid and create
         System.out.println("\nGenerate Grid: ");
         final int minX = drawLines.stream().filter(d -> d.xAxis).min(Comparator.comparingInt(d -> d.axis)).get().axis - 3; //3 is Padding for visuals
         final int minY = 0; //drawLines.stream().filter(d -> !d.xAxis).min(Comparator.comparingInt(d -> d.axis)).get().axis;
@@ -51,8 +62,9 @@ public class Main
         System.out.println("\t" + minX + "," + minY + " to " + maxX + "," + maxY);
         System.out.println("\t" + deltaX + "x" + deltaY);
 
-        final GridChar gridChar = new GridChar(deltaX, deltaY, AIR);
+        gridChar = new GridChar(deltaX, deltaY, AIR);
 
+        //Offset all data to min so it can be measured from zero to make it easier to draw
         System.out.println("\nNormalizing Data to Grid: ");
         drawLines.forEach(d -> {
             if (d.xAxis)
@@ -70,33 +82,58 @@ public class Main
         });
         drawLines.forEach(d -> System.out.println("\t" + d));
 
+        //For each line draw
         System.out.println("\nDraw Grid: ");
         drawLines.forEach(d -> {
             System.out.println("\t" + d);
             d.draw(gridChar);
         });
+        //Add the spring
         gridChar.setData(springX - minX, springY, '+');
+
+        //Output start conditions for debug
         gridChar.print();
-        generateGridImage(new File(file.getParent(), "output0.png"), gridChar, 1);
 
+        //Clear old folder and remake
+        final File imgFolder = new File(file.getParent(), "out/outputInit.png");
+        if (!imgFolder.exists())
+        {
+            imgFolder.mkdirs();
+        }
 
+        //Generate start image
+        imageBuffer = new BufferedImage(gridChar.sizeX, gridChar.sizeY, BufferedImage.TYPE_INT_ARGB);
+        ImageHelpers.savePNG(new File(file.getParent(), "out/outputInit.png"), gridChar.generateImage(imageBuffer));
+
+        //Add the first water source
         System.out.println("\nFilling water: ");
         gridChar.setData(springX - minX, springY + 1, '|');
-        //gridChar.print();
 
-        int y = 1;
+        final Queue<Pair<Dot, Character>> edits = new LinkedList();
+
+        //Each time we change the grid save an image, it massively slows down the program but makes for a good result
+        gridChar.onChangeFunction = (g, gx, gy, ov, nv) -> {
+            if (ov != nv)
+            {
+                edits.offer(new Pair(new Dot(gx, gy), nv));
+            }
+            return true;
+        };
+
+        //Count runs, for debug reasons
         int runs = 0;
-        int image = 1;
+
+        //Move through y level from top (zero) to bottom (maxY)... rests to top several times
+        int y = 1;
         while (y <= maxY)
         {
             System.out.println(runs + ": Searching " + y);
+
             //Find all stream ends and path down 1
-            if (gridChar.forEachRow((g, gx, gy) -> handleLocation(g, gx, gy), y))
+            if (gridChar.forEachRow((g, gx, gy) -> handleLocation(gx, gy), y))
             {
                 //Search from top again to find all streams we missed
                 y = 0;
-                //System.out.println(runs + ": Reset to top");
-                generateGridImage(new File(file.getParent(), getFileName(image++)), gridChar, 1);
             }
             //Move down 1
             else
@@ -105,35 +142,42 @@ public class Main
                 //System.out.println(runs + ": Moved down 1");
             }
 
+            //Increase run
             runs++;
-            //gridChar.print();
-            //generateGridImage(new File(file.getParent(), "output-" + runs + ".png"), gridChar, 4);
         }
 
+        //Generate images
+        System.out.println("\nGenerating images of edits: ");
+        System.out.println("\tEdits: " + edits.size());
+        while (edits.peek() != null)
+        {
+            Pair<Dot, Character> edit = edits.poll();
+            generateGridImage(new File(file.getParent(), getFileName(imageSaveCounter++)), edit.getKey().x, edit.getKey().y, edit.getValue());
+        }
     }
 
     static String getFileName(int index)
     {
-        return "output" + StringHelpers.padLeft("" + index, 6).replaceAll("\\s", "0") + ".png";
+        return "out/output" + StringHelpers.padLeft("" + index, 6).replaceAll("\\s", "0") + ".png";
     }
 
-    static boolean handleLocation(GridChar grid, int x, int y)
+    static boolean handleLocation(int x, int y)
     {
-        if (isStreamEnd(grid, x, y))
+        if (isStreamEnd(x, y))
         {
             //System.out.println("\tFound Stream end " + x + "," + y);
 
             //Draw stream down 1
             y += 1;
-            grid.setData(x, y, WATER);
+            gridChar.setData(x, y, WATER);
 
             //Check what is under stream, If hit bottom try to fill container
             y += 1;
-            char c = grid.getDataIfGrid(x, y);
+            char c = gridChar.getDataIfGrid(x, y);
             if (c == CLAY || c == WATER_REST)
             {
                 //Keep filling container until we fall off an edge
-                while (tryToFillContainer(grid, x, y))
+                while (tryToFillContainer(x, y))
                 {
                     y--;
                     //System.out.println("\tFilled a row " + x + "," + y);
@@ -150,7 +194,7 @@ public class Main
         return false;
     }
 
-    static boolean tryToFillContainer(GridChar grid, int gx, int gy)
+    static boolean tryToFillContainer(int gx, int gy)
     {
         int leftIndex = -1;
         int rightIndex = -1;
@@ -158,7 +202,7 @@ public class Main
         //Search left
         for (int x = gx; x >= 0; x--)
         {
-            if (grid.getData(x, gy) == CLAY)
+            if (gridChar.getData(x, gy) == CLAY)
             {
                 leftIndex = x;
                 break;
@@ -166,10 +210,10 @@ public class Main
             else
             {
                 //Set to water
-                grid.setData(x, gy, WATER);
+                gridChar.setData(x, gy, WATER);
 
                 //Hit edge
-                char c = grid.getDataIfGrid(x, gy + 1);
+                char c = gridChar.getDataIfGrid(x, gy + 1);
                 if (c != CLAY && c != WATER_REST)
                 {
                     break;
@@ -178,9 +222,9 @@ public class Main
         }
 
         //Search right
-        for (int x = gx; x < grid.sizeX; x++)
+        for (int x = gx; x < gridChar.sizeX; x++)
         {
-            if (grid.getData(x, gy) == CLAY)
+            if (gridChar.getData(x, gy) == CLAY)
             {
                 rightIndex = x;
                 break;
@@ -188,10 +232,10 @@ public class Main
             else
             {
                 //Set to water
-                grid.setData(x, gy, WATER);
+                gridChar.setData(x, gy, WATER);
 
                 //Hit edge
-                char c = grid.getDataIfGrid(x, gy + 1);
+                char c = gridChar.getDataIfGrid(x, gy + 1);
                 if (c != CLAY && c != WATER_REST)
                 {
                     break;
@@ -205,33 +249,33 @@ public class Main
         {
             for (int x = leftIndex + 1; x < rightIndex; x++)
             {
-                grid.setData(x, gy, WATER_REST);
+                gridChar.setData(x, gy, WATER_REST);
             }
             return true;
         }
         return false;
     }
 
-    static boolean isStreamEnd(GridChar grid, int x, int y)
+    static boolean isStreamEnd(int x, int y)
     {
-        if (grid.getDataIfGrid(x, y) == WATER)
+        if (gridChar.getDataIfGrid(x, y) == WATER)
         {
             //Check that what is under us is not the end of the map or an clay block
-            char c = grid.getDataIfGrid(x, y + 1);
+            char c = gridChar.getDataIfGrid(x, y + 1);
             return (c == AIR || c == WATER_REST)
                     //We are only a steam end if both blocks to the side are not water
 
                     //EX:  .|.
-                    && (grid.getDataIfGrid(x - 1, y) != WATER
-                    && grid.getDataIfGrid(x + 1, y) != WATER
+                    && (gridChar.getDataIfGrid(x - 1, y) != WATER
+                    && gridChar.getDataIfGrid(x + 1, y) != WATER
 
                     //If 1 air tile
                     //EX:    .||||||||#
-                    || grid.getDataIfGrid(x - 1, y) == AIR
+                    || gridChar.getDataIfGrid(x - 1, y) == AIR
 
                     //If 1 air tile
                     //EX:    #||||||||.
-                    || grid.getDataIfGrid(x + 1, y) == AIR);
+                    || gridChar.getDataIfGrid(x + 1, y) == AIR);
 
 
             //Case 1: both air - valid
@@ -296,10 +340,12 @@ public class Main
         return drawLine;
     }
 
-    static void generateGridImage(File file, GridChar gridDataMap, int scale)
+    static void generateGridImage(File file, int x, int y, char value)
     {
-        BufferedImage rawImage = gridDataMap.generateImage();
-        rawImage = ImageHelpers.scaleImage(rawImage, scale);
-        ImageHelpers.savePNG(file, rawImage);
+        //Update image
+        gridChar.setPixel(imageBuffer, x, y, value);
+
+        //Save updated version
+        ImageHelpers.savePNG(file, imageBuffer);
     }
 }

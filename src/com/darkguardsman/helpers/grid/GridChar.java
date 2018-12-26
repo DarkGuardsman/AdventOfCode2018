@@ -19,6 +19,7 @@ public class GridChar extends GridPrefab<GridChar>
     private char[][] data;
     private static final HashMap<Integer, Color> idToColor = new HashMap();
     private static final Random rand = new Random();
+    public static GridCharCellValueFunction<GridChar> onChangeFunction;
 
     public GridChar(int sizeX, int sizeY)
     {
@@ -35,7 +36,12 @@ public class GridChar extends GridPrefab<GridChar>
     public void setData(int x, int y, char value)
     {
         checkBound(x, y);
-        data[x][y] = value;
+
+        final char prev = data[x][y];
+        if(onChangeFunction == null || onChangeFunction.onCell(this, x, y, prev, value))
+        {
+            data[x][y] = value;
+        }
     }
 
     public char getData(Dot dot)
@@ -142,23 +148,36 @@ public class GridChar extends GridPrefab<GridChar>
     }
 
 
-    public BufferedImage generateImage() //TODO abstract to super prefab
+    public BufferedImage generateImage(BufferedImage prevImage) //TODO abstract to super prefab
     {
-        final BufferedImage rawImage = new BufferedImage(sizeX, sizeY, BufferedImage.TYPE_INT_ARGB);
+        final BufferedImage rawImage = prevImage == null ? new BufferedImage(sizeX, sizeY, BufferedImage.TYPE_INT_ARGB) : prevImage;
 
         //Set pixel to color based on data at xy
         forEach((g, x, y) ->
         {
-            rawImage.setRGB(x, y, getColor(x, y).getRGB());
+            setPixel(rawImage, x, y);
             return false;
         });
 
         return rawImage;
     }
 
-    private Color getColor(int x, int y) //TODO abstract to super prefab
+    public void setPixel(BufferedImage rawImage, int x, int y)
     {
-        int id = getColorID(x, y);
+        rawImage.setRGB(x, y, getColor(x, y).getRGB());
+    }
+
+    public void setPixel(BufferedImage rawImage, int x, int y, char value)
+    {
+        rawImage.setRGB(x, y, getColor(getColorID(value)).getRGB());
+    }
+
+    protected Color getColor(int x, int y) //TODO abstract to super prefab
+    {
+        return getColor(getColorID(x, y));
+    }
+    protected Color getColor(int id) //TODO abstract to super prefab
+    {
         //Create random color
         if (!idToColor.containsKey(id))
         {
@@ -170,9 +189,14 @@ public class GridChar extends GridPrefab<GridChar>
         return idToColor.get(id);
     }
 
-    private int getColorID(int x, int y) //TODO abstract to super prefab, use hashcode() as ID for colors
+    protected int getColorID(char value)
     {
-        return (int) getData(x, y);
+        return (int)value;
+    }
+
+    protected int getColorID(int x, int y) //TODO abstract to super prefab, use hashcode() as ID for colors
+    {
+        return getColorID(getData(x, y));
     }
 
     public GridChar copy()
